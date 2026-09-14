@@ -20,10 +20,9 @@ import requests
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from solis_energy_manager.logger import get_logger
-from solis_energy_manager.settings import get_settings
+from solis_energy_manager.settings import Settings, get_settings
 
 logger = get_logger(__name__)
-settings = get_settings()
 
 _SIGN_METHOD = "POST"
 _CONTENT_TYPE = "application/json"
@@ -56,7 +55,8 @@ def _generate_solis_api_signature(
     api_id: str,
     api_secret: str,
     body: str,
-    api_endpoint: str,
+    solis_api_base: str,
+    solis_api_endpoint: str,
 ) -> dict[str, str]:
     """Build the authentication headers required by the SolisCloud Open API.
 
@@ -69,7 +69,8 @@ def _generate_solis_api_signature(
         api_id: The SolisCloud API key ID (used as the Authorization key).
         api_secret: The SolisCloud API key secret, used to sign the request.
         body: The raw JSON request body, exactly as it will be sent on the wire.
-        api_endpoint: The API path being called, e.g. "inverterDetail".
+        solis_api_base: The base path for the SolisCloud API (e.g. "/v1/api/").
+        solis_api_endpoint: The API path being called, e.g. "inverterDetail".
 
     Returns:
         A dict of headers ("Content-MD5", "Content-Type", "Date",
@@ -85,7 +86,7 @@ def _generate_solis_api_signature(
 
     sign_str = (
         f"{_SIGN_METHOD}\n{content_md5}\n{_CONTENT_TYPE}\n{date}\n"
-        f"{settings.solis_api_base}{api_endpoint}"
+        f"{solis_api_base}{solis_api_endpoint}"
     )
 
     sign = base64.b64encode(
@@ -104,7 +105,7 @@ def _generate_solis_api_signature(
     }
 
 
-def _parse_inverter_response(output: dict[str, Any]) -> InverterSnapshot:
+def _parse_response(output: dict[str, Any]) -> InverterSnapshot:
     """Validate and extract an ``InverterSnapshot`` from a raw API response.
 
     SolisCloud signals failure via the HTTP status (handled by
@@ -136,11 +137,10 @@ def _parse_inverter_response(output: dict[str, Any]) -> InverterSnapshot:
         raise SolisApiError(f"Malformed SolisCloud response data: {data}") from exc
 
 
-def get_inverter_data(
-    api_id: str,
-    api_secret: str,
-    body_content: dict[str, Any],
-    api_endpoint: str = "inverterDetail",
+def get_data(
+    settings: Settings,
+    api_endpoint: str,
+    api_body_content: dict[str, Any],
 ) -> InverterSnapshot:
     """Fetch the current battery/grid snapshot for a SolisCloud inverter.
 
@@ -149,11 +149,11 @@ def get_inverter_data(
     ``settings.api_call_delay`` seconds between attempts.
 
     Args:
-        api_id: The SolisCloud API key ID.
-        api_secret: The SolisCloud API key secret.
-        body_content: The JSON-serialisable request payload, e.g.
+        settings: The application settings, providing SolisCloud
+            credentials, API endpoints, and retry config.
+        api_endpoint: The API path to call, e.g. "inverterDetail".
+        api_body_content: The JSON-serialisable request payload, e.g.
             ``{"sn": "<inverter serial number>"}``.
-        api_endpoint: The API path to call. Defaults to "inverterDetail".
 
     Returns:
         An InverterSnapshot with the battery state of charge and today's
@@ -165,13 +165,14 @@ def get_inverter_data(
         requests.RequestException: If every retry attempt fails at the
             transport level (network error, timeout, or HTTP error status).
     """
-    body = json.dumps(body_content)
+    body = json.dumps(api_body_content)
 
     headers = _generate_solis_api_signature(
-        api_id=api_id,
-        api_secret=api_secret,
+        api_id=settings.solis_key_id.get_secret_value(),
+        api_secret=settings.solis_key_secret.get_secret_value(),
         body=body,
-        api_endpoint=api_endpoint,
+        solis_api_base=settings.solis_api_base,
+        solis_api_endpoint=api_endpoint,
     )
 
     url = f"{settings.solis_api_url}{settings.solis_api_base}{api_endpoint}"
@@ -185,7 +186,7 @@ def get_inverter_data(
             response = requests.post(url, headers=headers, data=body, timeout=30)
             response.raise_for_status()
             output = response.json()
-            return _parse_inverter_response(output)
+            return _parse_response(output)
 
         except requests.RequestException as exc:
             last_error = exc
@@ -206,11 +207,14 @@ def get_inverter_data(
 
 def _main() -> None:
     """Manual smoke-test entry point: fetch and log a live inverter snapshot."""
-    api_id = settings.solis_key_id.get_secret_value()
-    api_secret = settings.solis_key_secret.get_secret_value()
-    body_content = {"sn": settings.solis_inverter_sn}
+    settings = get_settings()
 
-    snapshot = get_inverter_data(api_id, api_secret, body_content)
+    api_body_content = {"sn": settings.solis_inverter_sn.get_secret_value()}
+    api_endpoint = "inverterDetail"
+
+    snapshot = get_data(
+        settings, api_endpoint=api_endpoint, api_body_content=api_body_content
+    )
 
     logger.info("Battery Capacity SOC: %s percent", snapshot.battery_capacity_soc)
     logger.info("Grid Sell Today Energy: %s kWh", snapshot.grid_sell_today_energy)

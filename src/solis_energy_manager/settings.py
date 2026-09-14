@@ -20,8 +20,15 @@ class Settings(BaseSettings):
     solis_key_secret: SecretStr
     solis_inverter_sn: SecretStr
 
-    api_call_attempts: int = 4
-    api_call_delay: int = 5  # seconds
+    pushstaq_api_url: str = "https://www.pushstaq.com/api/push/"
+    pushstaq_api_key: SecretStr
+
+    api_call_attempts: int = 5
+    api_call_delay: int = 30  # seconds
+
+    fallback_max_retry: int = 3
+    fallback_retry_delay: int = 60  # seconds
+
     schedule_name: str = "daily_refresh"
     cron_schedule: str = "0 0 * * *"  # runs once every day at 12:00 AM (midnight)
 

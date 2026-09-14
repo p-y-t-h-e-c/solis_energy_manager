@@ -26,6 +26,7 @@ directory_type = "project"
 
 [tool.dg.project]
 root_module = "solis_energy_manager"
+code_location_name = "solis_energy_manager.definitions"
 registry_modules = [
     "solis_energy_manager.components.*",
 ]
