@@ -123,3 +123,4 @@ The following Solis resources provide the authoritative instructions for obtaini
 * [Solis Service Center](https://solis-service.solisinverters.com/)
 * [SolisCloud](https://www.soliscloud.com/)
 * [API Documentation Overview](https://developer.soliscloud.com/guide/)
+* [The latest (Sep 2026) SolisCloud Platform API Document](https://oss.soliscloud.com/templet/SolisCloud%20Platform%20API%20Document%20V2.0.3.pdf)

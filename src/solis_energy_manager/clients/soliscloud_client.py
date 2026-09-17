@@ -43,6 +43,7 @@ class InverterSnapshot(BaseModel):
     battery_capacity_soc: float = Field(ge=0, le=100)
     grid_sell_today_energy: float = Field(ge=0)
     battery_today_charge_energy: float = Field(ge=0)
+    pv_energy_generated_today: float = Field(ge=0)
 
 
 class SolisApiError(RuntimeError):
@@ -132,6 +133,7 @@ def _parse_response(output: dict[str, Any]) -> InverterSnapshot:
             battery_capacity_soc=data["batteryCapacitySoc"],
             grid_sell_today_energy=data["gridSellTodayEnergy"],
             battery_today_charge_energy=data["batteryTodayChargeEnergy"],
+            pv_energy_generated_today=data["eToday"],
         )
     except (KeyError, ValidationError) as exc:
         raise SolisApiError(f"Malformed SolisCloud response data: {data}") from exc
@@ -216,11 +218,12 @@ def _main() -> None:
         settings, api_endpoint=api_endpoint, api_body_content=api_body_content
     )
 
-    logger.info("Battery Capacity SOC: %s percent", snapshot.battery_capacity_soc)
-    logger.info("Grid Sell Today Energy: %s kWh", snapshot.grid_sell_today_energy)
+    logger.info("PV Energy Generated Today: %s kWh", snapshot.pv_energy_generated_today)
     logger.info(
         "Battery Today Charge Energy: %s kWh", snapshot.battery_today_charge_energy
     )
+    logger.info("Battery Capacity SOC: %s percent", snapshot.battery_capacity_soc)
+    logger.info("Grid Sell Today Energy: %s kWh", snapshot.grid_sell_today_energy)
 
 
 if __name__ == "__main__":

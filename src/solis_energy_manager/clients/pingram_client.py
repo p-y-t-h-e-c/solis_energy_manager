@@ -1,33 +1,44 @@
-import asyncio
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from pingram import Pingram
+from pingram.models.send_email_request import SendEmailRequest
 
-import dagster as dg
-
-from solis_energy_manager.clients.pingram_client import send_email
-from solis_energy_manager.clients.soliscloud_client import InverterSnapshot, get_data
-from solis_energy_manager.settings import get_settings
-
-settings = get_settings()
+from solis_energy_manager.settings import Settings
 
 
-@dg.asset(
-    retry_policy=dg.RetryPolicy(
-        max_retries=settings.fallback_max_retry, delay=settings.fallback_retry_delay
+async def send_email(settings: Settings, subject: str, html_content: str) -> None:
+    async with Pingram(
+        api_key=settings.pingram_api_key.get_secret_value(),
+        base_url=settings.pingram_api_url,
+    ) as client:
+        await client.email.email_send(
+            SendEmailRequest(
+                type="email_compose_preview",
+                to=settings.destination_email.get_secret_value(),
+                subject=subject,
+                html=html_content,
+                fromName=settings.from_name,
+                fromAddress="noreply@pingram.io",
+            )
+        )
+
+
+if __name__ == "__main__":
+    import asyncio
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from solis_energy_manager.clients.soliscloud_client import (
+        get_data,
     )
-)
-def get_solis_cloud_data() -> InverterSnapshot:
-    """Current battery SOC and grid/battery energy figures."""
-    return get_data(
-        settings,
-        api_body_content={"sn": settings.solis_inverter_sn.get_secret_value()},
-        api_endpoint="inverterDetail",
+    from solis_energy_manager.settings import get_settings
+
+    settings = get_settings()
+
+    api_body_content = {"sn": settings.solis_inverter_sn.get_secret_value()}
+    api_endpoint = "inverterDetail"
+
+    get_solis_cloud_data = get_data(
+        settings, api_endpoint=api_endpoint, api_body_content=api_body_content
     )
-
-
-@dg.asset(name="check_solis_cloud_data", deps=[get_solis_cloud_data])
-def check_solis_cloud_data(get_solis_cloud_data: InverterSnapshot) -> None:
-    """Check SolisCloud data."""
 
     date = datetime.now(ZoneInfo("Europe/London")).strftime("%a, %d %b %Y at %H:%M %Z")
 
