@@ -15,12 +15,13 @@ run_launcher:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
       - POSTGRES_DB
+
       - SOLIS_KEY_ID
       - SOLIS_KEY_SECRET
       - SOLIS_INVERTER_SN
+
       - PINGRAM_API_KEY
       - DESTINATION_EMAIL
-      - FROM_NAME
 
     network: solis_energy_manager_network
 

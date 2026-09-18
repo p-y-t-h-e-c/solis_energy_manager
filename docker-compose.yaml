@@ -38,7 +38,6 @@ services:
 
       PINGRAM_API_KEY: ${PINGRAM_API_KEY}
       DESTINATION_EMAIL: ${DESTINATION_EMAIL}
-      FROM_NAME: ${FROM_NAME}
 
     healthcheck:
       test:
@@ -92,7 +91,6 @@ services:
 
       PINGRAM_API_KEY: ${PINGRAM_API_KEY}
       DESTINATION_EMAIL: ${DESTINATION_EMAIL}
-      FROM_NAME: ${FROM_NAME}
 
     networks:
       - solis_energy_manager_network
@@ -126,7 +124,6 @@ services:
 
       PINGRAM_API_KEY: ${PINGRAM_API_KEY}
       DESTINATION_EMAIL: ${DESTINATION_EMAIL}
-      FROM_NAME: ${FROM_NAME}
 
     volumes:
       # Required by DockerRunLauncher to launch run containers.
