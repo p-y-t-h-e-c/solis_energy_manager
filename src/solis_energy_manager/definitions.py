@@ -1,8 +1,17 @@
-from pathlib import Path
-
 import dagster as dg
 
+from solis_energy_manager.defs.assets import (
+    check_solis_cloud_data,
+    get_solis_cloud_data,
+)
+from solis_energy_manager.defs.schedules import daily_schedule
 
-@dg.definitions
-def defs():
-    return dg.load_from_defs_folder(path_within_project=Path(__file__).parent)
+defs = dg.Definitions(
+    assets=[
+        get_solis_cloud_data,
+        check_solis_cloud_data,
+    ],
+    schedules=[
+        daily_schedule,
+    ],
+)

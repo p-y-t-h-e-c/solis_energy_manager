@@ -1,0 +1,5 @@
+load_from:
+  - grpc_server:
+      host: solis_energy_manager_code
+      port: 4000
+      location_name: "solis_energy_manager"

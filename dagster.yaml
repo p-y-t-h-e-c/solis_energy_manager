@@ -1,0 +1,77 @@
+scheduler:
+  module: dagster.core.scheduler
+  class: DagsterDaemonScheduler
+
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+
+run_launcher:
+  module: dagster_docker
+  class: DockerRunLauncher
+
+  config:
+    env_vars:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - SOLIS_KEY_ID
+      - SOLIS_KEY_SECRET
+      - SOLIS_INVERTER_SN
+      - PINGRAM_API_KEY
+      - DESTINATION_EMAIL
+      - FROM_NAME
+
+    network: solis_energy_manager_network
+
+    container_kwargs:
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+
+run_storage:
+  module: dagster_postgres.run_storage
+  class: PostgresRunStorage
+
+  config:
+    postgres_db:
+      hostname: docker_postgresql_db
+      username:
+        env: POSTGRES_USER
+      password:
+        env: POSTGRES_PASSWORD
+      db_name:
+        env: POSTGRES_DB
+      port: 5432
+
+schedule_storage:
+  module: dagster_postgres.schedule_storage
+  class: PostgresScheduleStorage
+
+  config:
+    postgres_db:
+      hostname: docker_postgresql_db
+      username:
+        env: POSTGRES_USER
+      password:
+        env: POSTGRES_PASSWORD
+      db_name:
+        env: POSTGRES_DB
+      port: 5432
+
+event_log_storage:
+  module: dagster_postgres.event_log
+  class: PostgresEventLogStorage
+
+  config:
+    postgres_db:
+      hostname: docker_postgresql_db
+      username:
+        env: POSTGRES_USER
+      password:
+        env: POSTGRES_PASSWORD
+      db_name:
+        env: POSTGRES_DB
+      port: 5432
+
+telemetry:
+  enabled: false

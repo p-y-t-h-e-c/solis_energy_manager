@@ -1,0 +1,25 @@
+services:
+
+  solis_energy_manager_code:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: solis_energy_manager:local
+    environment:
+      DAGSTER_CURRENT_IMAGE: "solis_energy_manager:local"
+
+  solis_energy_manager_webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: solis_energy_manager:local
+    environment:
+      DAGSTER_CURRENT_IMAGE: "solis_energy_manager:local"
+
+  solis_energy_manager_daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: solis_energy_manager:local
+    environment:
+      DAGSTER_CURRENT_IMAGE: "solis_energy_manager:local"

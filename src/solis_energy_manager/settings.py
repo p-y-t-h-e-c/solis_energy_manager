@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     from_name: str = "Solis Energy Manager"
 
     schedule_name: str = "daily_refresh"
-    cron_schedule: str = "0 0 * * *"  # runs once every day at 12:00 AM (midnight)
+    cron_schedule: str = "* 16 * * *"  # runs once every day at 4:00 PM
 
 
 @cache
