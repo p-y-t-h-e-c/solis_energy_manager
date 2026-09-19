@@ -2,7 +2,7 @@
 
 from functools import cache
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,9 +16,9 @@ class Settings(BaseSettings):
 
     solis_api_url: str = "https://www.soliscloud.com:13333"
     solis_api_base: str = "/v1/api/"
-    solis_key_id: SecretStr
-    solis_key_secret: SecretStr
-    solis_inverter_sn: SecretStr
+    solis_key_id: SecretStr = Field(validation_alias="SOLIS_KEY_ID")
+    solis_key_secret: SecretStr = Field(validation_alias="SOLIS_KEY_SECRET")
+    solis_inverter_sn: SecretStr = Field(validation_alias="SOLIS_INVERTER_SN")
 
     api_call_attempts: int = 5
     api_call_delay: int = 30  # seconds
@@ -27,12 +27,12 @@ class Settings(BaseSettings):
     fallback_retry_delay: int = 60  # seconds
 
     pingram_api_url: str = "https://api.eu.pingram.io"
-    pingram_api_key: SecretStr
-    destination_email: SecretStr
+    pingram_api_key: SecretStr = Field(validation_alias="PINGRAM_API_KEY")
+    destination_email: SecretStr = Field(validation_alias="DESTINATION_EMAIL")
     from_name: str = "Solis Energy Manager"
 
     schedule_name: str = "daily_refresh"
-    cron_schedule: str = "0 0 * * *"  # runs once every day at 12:00 AM (midnight)
+    cron_schedule: str = "* 16 * * *"  # runs once every day at 4:00 PM
 
 
 @cache

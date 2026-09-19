@@ -1,0 +1,150 @@
+services:
+
+  # PostgreSQL stores Dagster run, schedule and event-log data.
+  docker_postgresql_db:
+    image: postgres:16
+    container_name: docker_postgresql_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - dagster_postgres_data:/var/lib/postgresql/data
+    networks:
+      - solis_energy_manager_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+
+  # This service exposes the Solis Energy Manager Dagster definitions
+  # over gRPC. The webserver connects to this service using workspace.yaml.
+  solis_energy_manager_code:
+    image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
+    container_name: solis_energy_manager_code
+    restart: unless-stopped
+    environment:
+      DAGSTER_CURRENT_IMAGE: "ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest"
+
+      SOLIS_KEY_ID: ${SOLIS_KEY_ID}
+      SOLIS_KEY_SECRET: ${SOLIS_KEY_SECRET}
+      SOLIS_INVERTER_SN: ${SOLIS_INVERTER_SN}
+
+      PINGRAM_API_KEY: ${PINGRAM_API_KEY}
+      DESTINATION_EMAIL: ${DESTINATION_EMAIL}
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import socket
+          s = socket.socket()
+          s.settimeout(2)
+          s.connect(("127.0.0.1", 4000))
+          s.close()
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - solis_energy_manager_network
+
+    depends_on:
+      docker_postgresql_db:
+        condition: service_healthy
+
+
+  # Dagster webserver provides the Dagster UI.
+  solis_energy_manager_webserver:
+    image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
+    container_name: solis_energy_manager_webserver
+    restart: unless-stopped
+    command:
+      - /opt/dagster/app/.venv/bin/dagster-webserver
+      - -h
+      - 0.0.0.0
+      - -p
+      - "3000"
+      - -w
+      - /opt/dagster/app/workspace.yaml
+    ports:
+      - "3000:3000"
+    environment:
+      DAGSTER_CURRENT_IMAGE: "ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest"
+
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      SOLIS_KEY_ID: ${SOLIS_KEY_ID}
+      SOLIS_KEY_SECRET: ${SOLIS_KEY_SECRET}
+      SOLIS_INVERTER_SN: ${SOLIS_INVERTER_SN}
+
+      PINGRAM_API_KEY: ${PINGRAM_API_KEY}
+      DESTINATION_EMAIL: ${DESTINATION_EMAIL}
+
+    networks:
+      - solis_energy_manager_network
+
+    depends_on:
+      docker_postgresql_db:
+        condition: service_healthy
+      solis_energy_manager_code:
+        condition: service_healthy
+
+
+  # Dagster daemon manages schedules and the run queue.
+  # It also launches individual runs using DockerRunLauncher.
+  solis_energy_manager_daemon:
+    image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
+    container_name: solis_energy_manager_daemon
+    restart: unless-stopped
+    command:
+      - /opt/dagster/app/.venv/bin/dagster-daemon
+      - run
+    environment:
+      DAGSTER_CURRENT_IMAGE: "ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest"
+
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      SOLIS_KEY_ID: ${SOLIS_KEY_ID}
+      SOLIS_KEY_SECRET: ${SOLIS_KEY_SECRET}
+      SOLIS_INVERTER_SN: ${SOLIS_INVERTER_SN}
+
+      PINGRAM_API_KEY: ${PINGRAM_API_KEY}
+      DESTINATION_EMAIL: ${DESTINATION_EMAIL}
+
+    volumes:
+      # Required by DockerRunLauncher to launch run containers.
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    networks:
+      - solis_energy_manager_network
+
+    depends_on:
+      docker_postgresql_db:
+        condition: service_healthy
+      solis_energy_manager_code:
+        condition: service_healthy
+
+
+networks:
+  solis_energy_manager_network:
+    driver: bridge
+    name: solis_energy_manager_network
+
+
+volumes:
+  dagster_postgres_data:
+    name: solis_energy_manager_postgres_data
