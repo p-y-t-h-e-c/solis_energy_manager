@@ -93,7 +93,7 @@ For example:
 
 ```text
 Docker image:
-pythec/solis_energy_manager:latest
+ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
 
         │
         ├── Code server container
@@ -549,12 +549,12 @@ It is accessible to other services through the internal Docker network on port `
 
 ```yaml
   solis_energy_manager_code:
-    image: pythec/solis_energy_manager:latest
+    image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
     container_name: solis_energy_manager_code
     restart: unless-stopped
 
     environment:
-      DAGSTER_CURRENT_IMAGE: "pythec/solis_energy_manager:latest"
+      DAGSTER_CURRENT_IMAGE: "ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest"
 
       SOLIS_KEY_ID: ${SOLIS_KEY_ID}
       SOLIS_KEY_SECRET: ${SOLIS_KEY_SECRET}
@@ -593,7 +593,7 @@ The code server provides the gRPC interface used by the Dagster webserver and da
 
 ```yaml
   solis_energy_manager_webserver:
-    image: pythec/solis_energy_manager:latest
+    image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
     container_name: solis_energy_manager_webserver
     restart: unless-stopped
 
@@ -610,7 +610,7 @@ The code server provides the gRPC interface used by the Dagster webserver and da
       - "3000:3000"
 
     environment:
-      DAGSTER_CURRENT_IMAGE: "pythec/solis_energy_manager:latest"
+      DAGSTER_CURRENT_IMAGE: "ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest"
 
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -644,7 +644,7 @@ ports:
 
 ```yaml
   solis_energy_manager_daemon:
-    image: pythec/solis_energy_manager:latest
+    image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
     container_name: solis_energy_manager_daemon
     restart: unless-stopped
 
@@ -653,7 +653,7 @@ ports:
       - run
 
     environment:
-      DAGSTER_CURRENT_IMAGE: "pythec/solis_energy_manager:latest"
+      DAGSTER_CURRENT_IMAGE: "ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest"
 
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -749,7 +749,7 @@ Without the healthcheck, the webserver can start before the gRPC code server is 
 Production Compose uses the published Docker image:
 
 ```text
-pythec/solis_energy_manager:latest
+ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
 ```
 
 For local development, a Compose override builds the image locally instead.
@@ -795,7 +795,7 @@ Production:
 
 ```text
 DAGSTER_CURRENT_IMAGE=
-pythec/solis_energy_manager:latest
+ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
 ```
 
 Local development:
@@ -810,7 +810,7 @@ If the local override changes the service image but does not change `DAGSTER_CUR
 This can result in errors such as:
 
 ```text
-No such image: pythec/solis_energy_manager:latest
+No such image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
 ```
 
 or an attempted Docker Hub pull.
@@ -849,39 +849,67 @@ The Dagster UI is then available on port `3000`.
 
 ## 11. Production Deployment
 
-The production deployment consists of:
-
-1. Build the Docker image.
-2. Push it to Docker Hub.
-3. Copy the deployment configuration to the server.
-4. Authenticate Docker on the server.
-5. Pull the new image.
-6. Restart the Compose application.
+The production deployment uses GitHub Actions to build the application Docker image, publish it to the GitHub Container Registry (GHCR), and update the application running on the Oracle VM.
 
 The deployment architecture is:
 
 ```text
                          GitHub
+
                            │
+
                            ▼
+
                     GitHub Actions
+
                            │
+
                     Build Docker image
+
                            │
+
                            ▼
-                       Docker Hub
+
+                         GHCR
+                  GitHub Container Registry
+
                            │
-                           │ docker pull
+
+                    authenticated pull
+
+                           │
+
                            ▼
+
                      Oracle VM
+
                            │
+
                     Docker Compose
+
                            │
+
              ┌─────────────┼─────────────┐
+
              ▼             ▼             ▼
+
           Dagster       Dagster       Dagster
+
            Code        Webserver       Daemon
 ```
+
+The container image is associated with the GitHub repository and is stored as a private package in GHCR.
+
+The GitHub Actions workflow is responsible for:
+
+1. Building the Docker image.
+2. Publishing the image to GHCR.
+3. Tagging the image with `latest` and the Git commit SHA.
+4. Preparing the production environment configuration.
+5. Copying the deployment configuration to the Oracle VM.
+6. Updating the running Docker Compose application.
+
+The detailed GitHub Actions implementation is documented separately.
 
 ---
 
@@ -925,132 +953,59 @@ A future improvement would be to generate the `.env` file directly on the VM rat
 
 ## 13. GitHub Actions Deployment
 
-A basic deployment workflow can build and publish the image and then update the VM.
+GitHub Actions provides the automated CI/CD pipeline used to build and deploy the application.
 
-```yaml
-name: ci
+The workflow is triggered when changes are pushed to the `main` branch.
 
-on:
-  push:
-    branches:
-      - 'main'
-      - 'refactor/**'
-      - 'develop'
-
-env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/solis_energy_manager
-
-jobs:
-
-  push_to_registry:
-    runs-on: ubuntu-latest
-
-    steps:
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  deploy_via_ssh:
-    needs: push_to_registry
-    runs-on: ubuntu-latest
-
-    steps:
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create .env file
-        run: |
-          echo "Generating .env file"
-
-          cat > .env <<EOF
-          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-
-          SOLIS_KEY_ID=${{ secrets.SOLIS_KEY_ID }}
-          SOLIS_KEY_SECRET=${{ secrets.SOLIS_KEY_SECRET }}
-          SOLIS_INVERTER_SN=${{ secrets.SOLIS_INVERTER_SN }}
-
-          PINGRAM_API_KEY=${{ secrets.PINGRAM_API_KEY }}
-          DESTINATION_EMAIL=${{ secrets.DESTINATION_EMAIL }}
-          EOF
-
-      - name: Copy deployment files to target server
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          port: 22
-          key: ${{ secrets.DEPLOY_KEY }}
-          source: "docker-compose.yaml,.env"
-          target: "~/.deploy/${{ github.event.repository.name }}/"
-
-      - name: Deploy application via SSH
-        uses: appleboy/ssh-action@v1
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          port: 22
-          key: ${{ secrets.DEPLOY_KEY }}
-          envs: DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
-
-          script: |
-            set -e
-
-            echo "$DOCKERHUB_TOKEN" | docker login \
-              --username "$DOCKERHUB_USERNAME" \
-              --password-stdin
-
-            cd ~/.deploy/${{ github.event.repository.name }}
-
-            echo "Pulling latest application image..."
-            docker compose pull
-
-            echo "Starting application..."
-            docker compose up -d
-
-            echo "Removing unused images..."
-            docker image prune -f
-
-            echo "Deployment status:"
-            docker compose ps
-```
-
-The image is tagged both with `latest` and the commit SHA:
+At a high level, the workflow consists of two stages:
 
 ```text
-pythec/solis_energy_manager:latest
-pythec/solis_energy_manager:<commit-sha>
+GitHub push to main
+        │
+        ▼
+┌───────────────────────────────┐
+│ Build and publish Docker image│
+│                               │
+│ GitHub Actions                │
+│        │                      │
+│        ▼                      │
+│ GHCR                          │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│ Deploy to Oracle VM           │
+│                               │
+│ Copy deployment configuration │
+│        │                      │
+│        ▼                      │
+│ Docker Compose                │
+│        │                      │
+│        ▼                      │
+│ Pull new image                │
+│        │                      │
+│        ▼                      │
+│ Restart application           │
+└───────────────────────────────┘
 ```
 
-Using the commit SHA provides an immutable reference that can be used for future rollback or reproducible deployments.
+The Docker image is published to the GitHub Container Registry using the GitHub Actions workflow token.
 
-A future improvement would be to make the Compose deployment use the SHA tag rather than `latest`.
+The image is tagged using both:
+
+```text
+ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
+
+ghcr.io/p-y-t-h-e-c/solis_energy_manager:<commit-sha>
+```
+
+The `latest` tag provides the normal deployment reference, while the commit SHA provides an immutable reference to a specific version of the application.
+
+The Oracle VM authenticates to GHCR separately in order to pull the private container image.
+
+Production application secrets are supplied to the deployment environment and are not included in the Docker image.
+
+The detailed workflow configuration, GitHub permissions, GHCR authentication, deployment secrets and SSH deployment process are documented in the separate **GitHub Actions Deployment** document.
 
 ---
 
@@ -1301,7 +1256,7 @@ DAGSTER_CURRENT_IMAGE
 Production should use:
 
 ```text
-pythec/solis_energy_manager:latest
+ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
 ```
 
 Local development should use:
@@ -1372,7 +1327,7 @@ docker ps -a --filter ancestor=solis_energy_manager:local
 or, in production:
 
 ```bash
-docker ps -a --filter ancestor=pythec/solis_energy_manager:latest
+docker ps -a --filter ancestor=ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
 ```
 
 Then inspect the relevant container:
@@ -1475,21 +1430,21 @@ Retries should not reuse an expired request signature.
 
 The following table summarises the important runtime configuration.
 
-| Component                  | Configuration                        |
-| -------------------------- | ------------------------------------ |
-| Application image          | `pythec/solis_energy_manager:latest` |
-| Local image                | `solis_energy_manager:local`         |
-| Code server                | `:4000`                              |
-| Webserver                  | `:3000`                              |
-| PostgreSQL                 | `:5432` internally                   |
-| Dagster home               | `/opt/dagster/dagster_home`          |
-| Python virtual environment | `/opt/dagster/app/.venv`             |
-| Docker network             | `solis_energy_manager_network`       |
-| PostgreSQL volume          | `solis_energy_manager_postgres_data` |
-| Run launcher               | `DockerRunLauncher`                  |
-| Run container image        | `DAGSTER_CURRENT_IMAGE`              |
-| Docker socket              | `/var/run/docker.sock`               |
-| Dagster metadata           | PostgreSQL                           |
+| Component                  | Configuration                                     |
+| -------------------------- | ------------------------------------------------- |
+| Application image          | `ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest` |
+| Local image                | `solis_energy_manager:local`                      |
+| Code server                | `:4000`                                           |
+| Webserver                  | `:3000`                                           |
+| PostgreSQL                 | `:5432` internally                                |
+| Dagster home               | `/opt/dagster/dagster_home`                       |
+| Python virtual environment | `/opt/dagster/app/.venv`                          |
+| Docker network             | `solis_energy_manager_network`                    |
+| PostgreSQL volume          | `solis_energy_manager_postgres_data`              |
+| Run launcher               | `DockerRunLauncher`                               |
+| Run container image        | `DAGSTER_CURRENT_IMAGE`                           |
+| Docker socket              | `/var/run/docker.sock`                            |
+| Dagster metadata           | PostgreSQL                                        |
 
 ---
 
@@ -1541,7 +1496,7 @@ Local:
 solis_energy_manager:local
 
 Production:
-pythec/solis_energy_manager:latest
+ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
 ```
 
 `DAGSTER_CURRENT_IMAGE` must always match the image available to the Docker daemon.
@@ -1603,41 +1558,71 @@ Once configured, the complete system can be understood as a simple sequence:
 
 ```text
                          DEVELOPMENT
+
                               │
+
                               ▼
+
                     Write application code
+
                               │
+
                               ▼
+
                      Update dependencies
+
                               │
+
                               ▼
-                       Build Docker image
-                              │
-                              ▼
+
                        Test locally
+
                               │
+
                               ▼
-                           Git push
+
+                        Push to main
+
                               │
+
                               ▼
+
                        GITHUB ACTIONS
+
                               │
-                              ▼
-                    Build and tag image
+
+                    Build Docker image
+
                               │
+
                               ▼
-                        Docker Hub
+
+                             GHCR
+
+                    GitHub Container Registry
+
                               │
+
                               ▼
-                           VM
+
+                           Oracle VM
+
                               │
+
                               ▼
-                     docker compose pull
+
+                     Docker Compose pull
+
                               │
+
                               ▼
-                      docker compose up
+
+                     Docker Compose up
+
                               │
+
                               ▼
+
                      ┌─────────────────┐
                      │ Dagster stack   │
                      │                 │
@@ -1664,4 +1649,8 @@ Once configured, the complete system can be understood as a simple sequence:
                 SolisCloud           Pingram
 ```
 
-This architecture keeps the responsibilities of the application, Dagster and Docker separate while allowing the entire system to be developed locally and deployed using the same containerised runtime.
+This architecture keeps the responsibilities of the application, Dagster, Docker and CI/CD infrastructure separate.
+
+GitHub Actions handles the automated build and deployment process, GHCR provides private container image storage, Docker Compose manages the production services, and Dagster manages the execution of individual application runs.
+
+---

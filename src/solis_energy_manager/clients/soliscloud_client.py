@@ -9,11 +9,11 @@ lower-rate grid tariff.
 from __future__ import annotations
 
 import base64
+import datetime as dt
 import hashlib
 import hmac
 import json
 import time
-from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -83,7 +83,7 @@ def _generate_solis_api_signature(
         hashlib.md5(body.encode("utf-8"), usedforsecurity=False).digest()
     ).decode("utf-8")
 
-    date = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+    date = dt.datetime.now(dt.UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")
 
     sign_str = (
         f"{_SIGN_METHOD}\n{content_md5}\n{_CONTENT_TYPE}\n{date}\n"

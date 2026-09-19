@@ -1,0 +1,121 @@
+name: Build, Publish and Deploy
+
+on:
+  push:
+    branches:
+      - 'main'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+
+  push_to_registry:
+    name: Build and publish Docker image
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy_via_ssh:
+    name: Deploy to Oracle VM
+    needs: push_to_registry
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create .env file
+        run: |
+          echo "Generating .env file"
+
+          cat > .env <<EOF
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+
+          SOLIS_KEY_ID=${{ secrets.SOLIS_KEY_ID }}
+          SOLIS_KEY_SECRET=${{ secrets.SOLIS_KEY_SECRET }}
+          SOLIS_INVERTER_SN=${{ secrets.SOLIS_INVERTER_SN }}
+
+          PINGRAM_API_KEY=${{ secrets.PINGRAM_API_KEY }}
+          DESTINATION_EMAIL=${{ secrets.DESTINATION_EMAIL }}
+          EOF
+
+      - name: Copy deployment files to target server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          port: 22
+          key: ${{ secrets.DEPLOY_KEY }}
+          source: "docker-compose.yaml,.env"
+          target: "~/.deploy/${{ github.event.repository.name }}/"
+
+      - name: Deploy application via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          port: 22
+          key: ${{ secrets.DEPLOY_KEY }}
+          envs: GHCR_USERNAME,GHCR_TOKEN
+
+          script: |
+            set -e
+
+            echo "$GHCR_TOKEN" | docker login \
+              ghcr.io \
+              --username "$GHCR_USERNAME" \
+              --password-stdin
+
+            cd ~/.deploy/${{ github.event.repository.name }}
+
+            echo "Pulling latest application image..."
+            docker compose pull
+
+            echo "Starting application..."
+            docker compose up -d
+
+            echo "Removing unused images..."
+            docker image prune -f
+
+            echo "Deployment status:"
+            docker compose ps

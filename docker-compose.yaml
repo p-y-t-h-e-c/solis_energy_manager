@@ -26,11 +26,11 @@ services:
   # This service exposes the Solis Energy Manager Dagster definitions
   # over gRPC. The webserver connects to this service using workspace.yaml.
   solis_energy_manager_code:
-    image: pythec/solis_energy_manager:latest
+    image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
     container_name: solis_energy_manager_code
     restart: unless-stopped
     environment:
-      DAGSTER_CURRENT_IMAGE: "pythec/solis_energy_manager:latest"
+      DAGSTER_CURRENT_IMAGE: "ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest"
 
       SOLIS_KEY_ID: ${SOLIS_KEY_ID}
       SOLIS_KEY_SECRET: ${SOLIS_KEY_SECRET}
@@ -65,7 +65,7 @@ services:
 
   # Dagster webserver provides the Dagster UI.
   solis_energy_manager_webserver:
-    image: pythec/solis_energy_manager:latest
+    image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
     container_name: solis_energy_manager_webserver
     restart: unless-stopped
     command:
@@ -79,7 +79,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DAGSTER_CURRENT_IMAGE: "pythec/solis_energy_manager:latest"
+      DAGSTER_CURRENT_IMAGE: "ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest"
 
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -105,14 +105,14 @@ services:
   # Dagster daemon manages schedules and the run queue.
   # It also launches individual runs using DockerRunLauncher.
   solis_energy_manager_daemon:
-    image: pythec/solis_energy_manager:latest
+    image: ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest
     container_name: solis_energy_manager_daemon
     restart: unless-stopped
     command:
       - /opt/dagster/app/.venv/bin/dagster-daemon
       - run
     environment:
-      DAGSTER_CURRENT_IMAGE: "pythec/solis_energy_manager:latest"
+      DAGSTER_CURRENT_IMAGE: "ghcr.io/p-y-t-h-e-c/solis_energy_manager:latest"
 
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
