@@ -28,6 +28,7 @@ run_launcher:
     container_kwargs:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
+        - dagster_run_storage:/opt/dagster/dagster_home/storage
 
 run_storage:
   module: dagster_postgres.run_storage
