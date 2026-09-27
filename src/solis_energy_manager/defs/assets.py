@@ -25,8 +25,14 @@ def get_solis_cloud_data() -> InverterSnapshot:
     )
 
 
-@dg.asset(name="check_solis_cloud_data", deps=[get_solis_cloud_data])
-def check_solis_cloud_data(get_solis_cloud_data: InverterSnapshot) -> None:
+@dg.asset(
+    name="validate_solis_cloud_data",
+    deps=[get_solis_cloud_data],
+)
+def validate_solis_cloud_data(
+    context: dg.AssetExecutionContext,
+    get_solis_cloud_data: InverterSnapshot,
+) -> None:
     """Check SolisCloud data."""
 
     date = datetime.now(ZoneInfo("Europe/London")).strftime("%a, %d %b %Y at %H:%M %Z")
@@ -103,4 +109,12 @@ def check_solis_cloud_data(get_solis_cloud_data: InverterSnapshot) -> None:
         </div>
         """
 
-    asyncio.run(send_email(settings, "Battery Capacity Info", html_content))
+    context.log.info("Sending Solis energy notification email")
+
+    asyncio.run(
+        send_email(
+            settings,
+            "Battery Capacity Info",
+            html_content,
+        )
+    )
