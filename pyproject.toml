@@ -17,6 +17,7 @@ dev = [
     "dagster-dg-cli",
     "dagster-webserver",
     "pre-commit>=4.6.2",
+    "pytest"
 ]
 
 [build-system]

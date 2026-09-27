@@ -13,7 +13,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.8
+    rev: v0.16.9
     hooks:
       # Run the linter.
       - id: ruff
@@ -23,7 +23,7 @@ repos:
 
   - repo: https://github.com/astral-sh/uv-pre-commit
     # uv version.
-    rev: 0.12.17
+    rev: 0.12.19
     hooks:
       # Update the uv lockfile
       - id: uv-lock
