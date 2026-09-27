@@ -3,21 +3,21 @@ name = "solis_energy_manager"
 requires-python = ">=3.13,<3.14"
 version = "0.1.0"
 dependencies = [
-    "dagster==1.13.21",
+    "dagster==1.13.22",
     "pingram-python>=1.0.31",
     "pydantic-settings>=2.15.0",
     "dagster-docker",
-    "dagster-webserver",
-    "dagster-postgres",
-    "dagster-graphql",
-    "psycopg[binary]>=3.3.6",
+    "dagster-webserver==1.13.22",
+    "dagster-postgres==0.29.22",
+    "dagster-graphql==1.13.22",
+    "sqlalchemy<2.1",
 ]
 
 [dependency-groups]
 dev = [
     "dagster-dg-cli",
     "dagster-webserver",
-    "pre-commit>=4.6.2",
+    "pre-commit",
     "pytest"
 ]
 
