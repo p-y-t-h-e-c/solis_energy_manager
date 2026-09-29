@@ -22,6 +22,10 @@ run_launcher:
 
       - PINGRAM_API_KEY
       - DESTINATION_EMAIL
+      - CC_EMAIL
+
+      - HOME_LATITUDE
+      - HOME_LONGITUDE
 
     network: solis_energy_manager_network
 

@@ -13,6 +13,7 @@ async def send_email(settings: Settings, subject: str, html_content: str) -> Non
             SendEmailRequest(
                 type="email_compose_preview",
                 to=settings.destination_email.get_secret_value(),
+                ccAddresses=[settings.cc_email.get_secret_value()],
                 subject=subject,
                 html=html_content,
                 fromName=settings.from_name,
