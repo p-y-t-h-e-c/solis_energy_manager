@@ -6,8 +6,6 @@ battery/grid figures needed to decide whether to charge overnight from a
 lower-rate grid tariff.
 """
 
-from __future__ import annotations
-
 import base64
 import datetime as dt
 import hashlib
