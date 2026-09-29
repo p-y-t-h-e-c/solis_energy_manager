@@ -74,6 +74,10 @@ jobs:
 
           PINGRAM_API_KEY=${{ secrets.PINGRAM_API_KEY }}
           DESTINATION_EMAIL=${{ secrets.DESTINATION_EMAIL }}
+          CC_EMAIL=${{ secrets.CC_EMAIL }}
+
+          HOME_LATITUDE=${{ secrets.HOME_LATITUDE }}
+          HOME_LONGITUDE=${{ secrets. HOME_LONGITUDE }}
           EOF
 
       - name: Copy deployment files to target server
