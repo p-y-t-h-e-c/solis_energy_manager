@@ -14,7 +14,7 @@ async def send_email(settings: Settings, subject: str, html_content: str) -> Non
     ) as client:
         await client.email.email_send(
             SendEmailRequest(
-                type="email_compose_preview",
+                type="daily_energy_summary",
                 to=settings.destination_email.get_secret_value(),
                 ccAddresses=[settings.cc_email.get_secret_value()],
                 subject=subject,
