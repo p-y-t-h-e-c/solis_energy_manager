@@ -278,7 +278,6 @@ def get_solar_forecast(
 
 def _main() -> None:
     """Manual smoke-test entry point: fetch and log tomorrow's forecast."""
-
     settings = get_settings()
     forecast_timezone = "Europe/London"
     tomorrow = datetime.now(ZoneInfo(forecast_timezone)).date() + timedelta(days=1)
