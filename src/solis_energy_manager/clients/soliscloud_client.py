@@ -45,8 +45,7 @@ class InverterSnapshot(BaseModel):
 
 
 class SolisApiError(RuntimeError):
-    """Raised when the SolisCloud API returns an error payload or an
-    unexpected/malformed response body."""
+    """Raised when the SolisCloud API returns an error payload or an unexpected/malformed response body."""  # noqa: E501
 
 
 def _generate_solis_api_signature(

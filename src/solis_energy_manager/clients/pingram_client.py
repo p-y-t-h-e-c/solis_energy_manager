@@ -1,3 +1,5 @@
+"""Pingram API Client module."""
+
 from pingram import Pingram
 from pingram.models.send_email_request import SendEmailRequest
 
@@ -5,6 +7,7 @@ from solis_energy_manager.settings import Settings
 
 
 async def send_email(settings: Settings, subject: str, html_content: str) -> None:
+    """Send an email notification."""
     async with Pingram(
         api_key=settings.pingram_api_key.get_secret_value(),
         base_url=settings.pingram_api_url,
