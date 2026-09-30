@@ -58,6 +58,7 @@ The application therefore acts as a small **decision-support and notification la
 
 * [Project Setup](.docs/project_setup.md)
 * [Solis API](.docs/solis_api.md)
+* [Pingram API](.docs/pingram_api.md)
 * [Docker Deployment](.docs/docker_deployment.md)
 * [GitHub Actions](.docs/github_actions.md)
 * [Oracle VM Instance](.docs/oracle_vm_instance.md)
