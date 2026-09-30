@@ -34,7 +34,132 @@ directory_type = "project"
 
 [tool.dg.project]
 root_module = "solis_energy_manager"
-# code_location_name = "solis_energy_manager.definitions"
-# registry_modules = [
-#     "solis_energy_manager.components.*",
-# ]
+
+# =============================================================================
+# Ruff configuration
+#
+# Ruff replaces Black (formatting), isort (import sorting), flake8 + most of
+# its plugin ecosystem, and pydocstyle, in one fast Rust binary. This file is
+# organized as: [tool.ruff] general settings, then [tool.ruff.lint] rule
+# selection, then per-tool sub-config, then [tool.ruff.format].
+# =============================================================================
+
+[tool.ruff]
+# Match Black's default line length. 88 is Black's own chosen sweet spot
+# (not 79/80 PEP 8) -- long enough to avoid excessive wrapping, short enough
+# to keep side-by-side diffs and splits readable.
+line-length = 88
+indent-width = 4
+
+# Tells ruff which Python version to assume when deciding what syntax is
+# available -- this matters most for the `UP` (pyupgrade) rules below, which
+# suggest modern syntax (e.g. `X | Y` instead of `Union[X, Y]`). Keep this in
+# sync with `requires-python` in [project].
+target-version = "py313"
+
+
+[tool.ruff.lint]
+# --- CORE: turn these on for every project from day one -------------------
+select = [
+    "E",    # pycodestyle errors -- PEP 8 violations (spacing, line breaks).
+    "W",    # pycodestyle warnings -- similar, lower-severity PEP 8 issues.
+    "F",    # Pyflakes -- unused imports/variables, undefined names, etc.
+            # These are usually real bugs, not style nits.
+    "D",    # pydocstyle -- docstring presence and formatting, enforced to
+            # the Google convention below (matches the style already used
+            # across solis_energy_manager's clients).
+    "I",    # isort -- import sorting and grouping (stdlib / third-party /
+            # first-party), configured further down.
+    "UP",   # pyupgrade -- flags old syntax patterns and suggests the
+            # modern equivalent for the target Python version (e.g. this
+            # would have caught the leftover `from __future__ import
+            # annotations` that did nothing on Python 3.13).
+    "B",    # flake8-bugbear -- catches common real-world bug patterns that
+            # plain pyflakes misses (mutable default arguments, misused
+            # except blocks, loop variables captured in closures, etc.).
+    "SIM",  # flake8-simplify -- flags code that can be written more
+            # directly (e.g. `if x: return True else: return False`).
+    "C4",   # flake8-comprehensions -- flags unnecessary list()/dict()
+            # wrapping and unhelpful comprehension patterns.
+    "A",    # flake8-builtins -- flags shadowing a Python builtin name
+            # (e.g. naming a variable `id` or `type`).
+    "N",    # pep8-naming -- enforces naming conventions (snake_case
+            # functions, PascalCase classes, etc.).
+    "ISC",  # flake8-implicit-str-concat -- catches accidental adjacent
+            # string literals ("foo" "bar") that silently concatenate.
+    "RUF",  # Ruff's own rules -- includes things like invalid `# noqa`
+            # comments and other checks with no other home.
+    "ERA",  # eradicate -- flags commented-out code left in a file. This
+            # would have flagged the `# print(json.dumps(forecast...))`
+            # and `# return response.json()` lines left in during
+            # openmeteo_client.py's development.
+    "T20",  # flake8-print -- flags stray print() calls. This would have
+            # caught the debug `print(day)` / `print(tomorrow)` left in
+            # _main() before it was cleaned up.
+    "DTZ",  # flake8-datetimez -- flags naive datetime/date usage that
+            # doesn't specify a timezone (e.g. `date.today()` instead of
+            # `datetime.now(ZoneInfo(...)).date()`). Directly relevant
+            # given the timezone-awareness fix already made in _main().
+    "G",    # flake8-logging-format -- enforces %-style lazy logging
+            # (`logger.info("x: %s", x)`) over eager f-strings
+            # (`logger.info(f"x: {x}")`), which is what this codebase
+            # already does consistently -- this rule keeps it that way.
+    "PTH",  # flake8-use-pathlib -- prefers pathlib.Path over os.path
+            # string manipulation.
+    "TID",  # flake8-tidy-imports -- import hygiene, configured below to
+            # ban relative imports in favour of the absolute
+            # `from solis_energy_manager.x import y` style already used
+            # throughout.
+    "ARG",  # flake8-unused-arguments -- flags function arguments that are
+            # never used (a common leftover after refactors).
+    "PLE",  # Pylint "errors" subset -- high-confidence likely-bug checks,
+            # kept separate from PLC/PLR/PLW (see growth section) because
+            # this subset alone has very low false-positive rates.
+]
+
+# On top of the Google docstring convention, D417 (require a docstring
+# entry for every function parameter) is dropped -- it's stricter than the
+# rest of this codebase's docstring style, which documents parameters in
+# prose rather than exhaustively for every single one.
+ignore = ["D417"]
+
+# Allow `ruff check --fix` to auto-fix anything it safely can.
+fixable = ["ALL"]
+
+# Exception: never auto-remove unused imports. An unused import is often a
+# sign you're mid-refactor (e.g. about to use it in the next line) rather
+# than dead code -- better to see it flagged and remove it deliberately.
+unfixable = ["F401"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+# Ensures isort recognizes `solis_energy_manager.*` imports as first-party
+# (grouped separately from third-party packages like `dagster`/`pydantic`),
+# rather than guessing based on what's installed in the environment.
+known-first-party = ["solis_energy_manager"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Bans `from . import x` / `from .foo import bar` style relative imports,
+# enforcing the absolute `from solis_energy_manager.foo import bar` style
+# already used across the codebase. Absolute imports are easier to search
+# for and don't break when a file moves between packages.
+ban-relative-imports = "all"
+
+[tool.ruff.lint.per-file-ignores]
+# Test files get a lighter touch: pytest's `assert` is idiomatic (not the
+# security anti-pattern S101 warns about in production code), and test
+# docstrings are lower-value than in library code where they're often
+# already self-explanatory from the test name.
+"tests/**/*.py" = ["S101", "D"]
+
+
+[tool.ruff.format]
+quote-style = "double"        # Like Black: double quotes for strings.
+indent-style = "space"        # Like Black: spaces, never tabs.
+skip-magic-trailing-comma = false  # Like Black: a trailing comma signals
+                                    # "keep this expanded on multiple lines"
+                                    # even if it would otherwise fit on one.
+line-ending = "auto"           # Detect and preserve the file's existing
+                                # line-ending convention (LF vs CRLF).
